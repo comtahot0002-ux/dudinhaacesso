@@ -3,64 +3,71 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento Confirmado ✨</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>🎉 Pagamento Confirmado!</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-pink: #FF9EAA;
+            --secondary-pink: #FFD0D6;
+            --dark-pink: #FF6B8B;
+            --bg-pink: #FFF0F5;
+        }
         body {
             font-family: 'Quicksand', sans-serif;
-            background-color: #ffdae2;
-            background-image: radial-gradient(#ffb7c5 20%, transparent 20%);
-            background-position: 0 0, 30px 30px;
-            background-size: 60px 60px;
+            background-color: var(--bg-pink);
+            background-image: radial-gradient(#FFB6C1 20%, transparent 20%), radial-gradient(#FFB6C1 20%, transparent 20%);
+            background-position: 0 0, 25px 25px;
+            background-size: 50px 50px;
             min-height: 100vh;
             margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
         .main-card {
             background: white;
-            border-radius: 40px;
-            box-shadow: 0 15px 35px rgba(255, 150, 170, 0.2);
-            position: relative;
-            max-width: 450px;
-            width: 92%;
-            margin: 40px 15px;
+            border-radius: 35px;
+            box-shadow: 0 15px 45px rgba(255, 107, 139, 0.2);
+            border: 4px solid var(--secondary-pink);
+            max-width: 480px;
+            width: 100%;
             padding: 40px 25px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            position: relative;
+            text-align: center;
         }
-        .ribbon {
+        .bunny-icon {
             position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
+            top: -45px;
+            right: -10px;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(5deg); }
+            50% { transform: translateY(-10px) rotate(-5deg); }
         }
         .dotted-receipt {
-            border: 2px dotted #ffc0cb;
+            background: #FFF9FA;
+            border: 2px dashed var(--primary-pink);
             border-radius: 20px;
             padding: 20px;
-            margin-top: 25px;
+            margin: 20px 0;
         }
-        .title-text {
-            font-family: 'Montserrat', sans-serif;
-            color: #ff6b8b;
-            letter-spacing: -0.5px;
+        .btn-pink {
+            background: var(--dark-pink);
+            box-shadow: 0 6px 20px rgba(255, 107, 139, 0.4);
+            transition: all 0.3s ease;
         }
-        .btn-gradient {
-            background: linear-gradient(180deg, #ff8da6 0%, #ff5c7c 100%);
-            box-shadow: 0 8px 20px rgba(255, 92, 124, 0.4);
+        .btn-pink:active {
+            transform: scale(0.96);
         }
-        .animate-bounce-soft {
-            animation: bounceSoft 2s infinite;
-        }
-        @keyframes bounceSoft {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+        input::placeholder {
+            color: #d1d1d1;
         }
     </style>
 <script type="importmap">
@@ -73,10 +80,9 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>
