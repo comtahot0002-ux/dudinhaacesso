@@ -8,7 +8,8 @@ import {
   Smartphone, 
   CheckCircle2,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 
 // --- CONFIGURAÇÕES DO PROJETO ---
@@ -31,48 +32,56 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [capturedTid, setCapturedTid] = useState('');
   const [capturedVid, setCapturedVid] = useState('');
+  const [hasConfigError, setHasConfigError] = useState(false);
 
   useEffect(() => {
-    // 1. CAPTURA AGRESSIVA DE PARÂMETROS
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
+    const params = new URLSearchParams(window.location.search);
     
-    // Lista de aliases comuns que as plataformas usam
-    const tid = params.get('telegram_id') || 
-                params.get('id_telegram') || 
-                params.get('tid') || 
-                params.get('payload_id') || 
-                params.get('user_id') || 
-                "NÃO CAPTURADO";
+    // Função para verificar se a tag é literal (não foi substituída pela plataforma)
+    const isInvalid = (val: string | null) => {
+      if (!val) return true;
+      const v = val.toLowerCase();
+      return v.includes('[') || v.includes(']') || v.includes('{') || v.includes('}') || v.includes('id_venda') || v.includes('id_telegram');
+    };
 
-    const vid = params.get('id_venda') || 
-                params.get('event_id') || 
-                params.get('reference') || 
-                params.get('transaction_id') || 
-                params.get('checkout_id') ||
-                `v_${Math.random().toString(36).substr(2, 9)}`;
+    // 1. Captura do TELEGRAM ID (Seguindo o padrão do clone que você mandou)
+    let tid = params.get('telegram_id') || 
+              params.get('payload_id') || // O clone usava muito payload_id
+              params.get('id_telegram') || 
+              params.get('tid');
     
-    setCapturedTid(tid);
-    setCapturedVid(vid);
+    // 2. Captura do ID DA VENDA (Seguindo o padrão do clone)
+    let vid = params.get('id_venda') || 
+              params.get('transaction_id') || // O clone usava transaction_id
+              params.get('event_id') || 
+              params.get('reference');
 
-    // Injetar script do Pixel mas NÃO inicializar ainda
+    // Validação de erro de configuração (tags literais na URL)
+    if (isInvalid(tid) || isInvalid(vid)) {
+      setHasConfigError(true);
+    }
+
+    // Fallbacks para não quebrar o Pixel se a configuração estiver errada
+    const finalTid = isInvalid(tid) ? "user_" + Math.random().toString(36).substr(2, 7) : tid;
+    const finalVid = isInvalid(vid) ? "pur_" + Math.random().toString(36).substr(2, 9) : vid;
+
+    setCapturedTid(finalTid || "");
+    setCapturedVid(finalVid || "");
+
+    // Injetar script do Pixel mas NÃO inicializar ainda (Delayed Init)
     if (!window.fbq) {
       (function(f:any,b:any,e:any,v:any,n?:any,t?:any,s?:any){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
     }
-
-    console.log("[DEBUG] Parâmetros capturados:", { tid, vid });
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Normalizar dados
     const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phone.replace(/\D/g, '');
 
-    // 2. INICIALIZAÇÃO E DISPARO (Delayed Strategy)
-    // Inicializamos o Pixel APENAS agora, já com os dados do lead
+    // Inicialização do Pixel com Advanced Matching (Melhora o Match Rate)
     window.fbq('init', PIXEL_ID, { 
       em: cleanEmail,
       ph: cleanPhone,
@@ -92,11 +101,11 @@ const App: React.FC = () => {
       eventID: capturedVid 
     });
 
-    // Simular processamento e liberar
+    // Simulação de delay para feedback visual
     setTimeout(() => {
       setLoading(false);
       setIsSubmitted(true);
-    }, 1200);
+    }, 1500);
   };
 
   return (
@@ -117,17 +126,17 @@ const App: React.FC = () => {
       
       <p className="text-slate-500 font-bold text-sm mb-6 flex items-center justify-center gap-2">
         <Sparkles size={16} className="text-yellow-400" /> 
-        ACESSO VIP GARANTIDO 
+        ACESSO VIP LIBERADO
         <Sparkles size={16} className="text-yellow-400" />
       </p>
 
       <div className="dotted-receipt space-y-2">
         <div className="flex justify-between text-[10px] font-bold text-pink-300 uppercase">
-          <span>Produto Selecionado</span>
+          <span>Item Adquirido</span>
           <div className="flex items-center gap-1"><Candy size={10}/> {PLAN_NAME}</div>
         </div>
         <div className="flex justify-between items-end">
-          <span className="text-xs font-bold text-slate-400 uppercase">Total Pago:</span>
+          <span className="text-xs font-bold text-slate-400 uppercase">Valor:</span>
           <span className="text-2xl font-black text-pink-600">R$ {UPSELL_VALUE.toFixed(2).replace('.', ',')}</span>
         </div>
       </div>
@@ -136,7 +145,7 @@ const App: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4 mt-6">
           <div className="text-center mb-4">
             <p className="text-[11px] font-bold text-slate-400 uppercase leading-tight">
-              Informe seus dados para <br/> vincular ao seu Telegram
+              Confirme seus dados para <br/> vincular ao Telegram
             </p>
           </div>
 
@@ -144,7 +153,7 @@ const App: React.FC = () => {
             <Mail className="absolute left-4 top-4 text-pink-200" size={18} />
             <input 
               type="email" 
-              placeholder="E-mail usado na compra"
+              placeholder="E-mail de compra"
               required
               className="w-full bg-slate-50 border-2 border-pink-100 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-pink-300 transition-all font-bold text-slate-600"
               value={email}
@@ -156,7 +165,7 @@ const App: React.FC = () => {
             <Smartphone className="absolute left-4 top-4 text-pink-200" size={18} />
             <input 
               type="tel" 
-              placeholder="Seu WhatsApp (com DDD)"
+              placeholder="WhatsApp com DDD"
               required
               className="w-full bg-slate-50 border-2 border-pink-100 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-pink-300 transition-all font-bold text-slate-600"
               value={phone}
@@ -169,14 +178,14 @@ const App: React.FC = () => {
             type="submit"
             className="btn-pink w-full text-white font-black py-5 rounded-2xl text-sm uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {loading ? "PROCESSANDO..." : "LIBERAR MEU ACESSO AGORA"}
+            {loading ? "PROCESSANDO..." : "LIBERAR ACESSO VIP"}
           </button>
         </form>
       ) : (
         <div className="mt-8 space-y-4 animate-in fade-in zoom-in duration-300">
           <div className="bg-green-50 border-2 border-green-100 p-4 rounded-2xl">
             <p className="text-green-600 font-bold text-xs uppercase flex items-center justify-center gap-2">
-               <ShieldCheck size={18}/> Tudo pronto! Acesso Liberado.
+               <ShieldCheck size={18}/> Vínculo realizado com sucesso!
             </p>
           </div>
           
@@ -186,29 +195,29 @@ const App: React.FC = () => {
           >
             VOLTAR PARA O BOT 🎀
           </a>
-          
-          <p className="text-[10px] text-slate-300 font-bold uppercase">
-            Você será redirecionado para o conteúdo VIP
-          </p>
         </div>
       )}
 
-      {/* FOOTER DEBUG - VISÍVEL PARA VOCÊ CONFERIR SE A APEX ENVIOU OS DADOS */}
+      {/* FOOTER DEBUG */}
       <div className="mt-10 pt-6 border-t border-dashed border-pink-50">
+        {hasConfigError && (
+            <div className="mb-4 bg-red-50 p-2 rounded-lg flex items-center gap-2 justify-center border border-red-100">
+                <AlertTriangle size={12} className="text-red-500 animate-pulse" />
+                <p className="text-[9px] text-red-600 font-black uppercase">Erro de Configuração no Painel da Apex</p>
+            </div>
+        )}
+        
         <div className="flex flex-col items-center gap-1 opacity-40">
-           <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Status de Captura:</p>
+           <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Dados de Rastreamento (Cloned Pattern):</p>
            <div className="flex gap-4">
-              <span className={`text-[9px] font-mono px-2 py-0.5 rounded ${capturedTid !== 'NÃO CAPTURADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <span className="text-[9px] font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">
                 TID: {capturedTid}
               </span>
-              <span className="text-[9px] font-mono bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+              <span className="text-[9px] font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">
                 VID: {capturedVid}
               </span>
            </div>
         </div>
-        <p className="text-[7px] text-slate-300 mt-4 uppercase font-bold">
-          Transação Segura • {capturedVid}
-        </p>
       </div>
     </div>
   );
