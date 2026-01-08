@@ -32,24 +32,23 @@ const App: React.FC = () => {
   const [eventId, setEventId] = useState<string>('');
 
   useEffect(() => {
-    // 1. Capturar Parâmetros de URL
+    // 1. Capturar Parâmetros de URL com fallback robusto
     const params = new URLSearchParams(window.location.search);
     
-    // Captura o ID do Telegram (suporta vários nomes de parâmetros comuns)
-    const tid = params.get('telegram_id') || params.get('id_telegram') || params.get('external_id');
-    if (tid) setTelegramId(tid);
+    // Captura o ID do Telegram
+    const tid = params.get('telegram_id') || params.get('id_telegram') || "sem_id";
+    setTelegramId(tid !== "sem_id" ? tid : null);
 
     // 2. Capturar ID de Evento (Deduplicação)
-    // Primeiro tenta pegar da URL (slug), se não tiver, tenta via parâmetro, se não, gera um.
-    const pathParts = window.location.pathname.split('/').filter(p => p.length > 5);
-    const extractedEventId = pathParts[pathParts.length - 1] || 
-                             params.get('id_venda') || 
+    // Agora prioriza pegar de ?id_venda=... para evitar erro de página não encontrada (404)
+    const extractedEventId = params.get('id_venda') || 
                              params.get('event_id') || 
-                             `upsell_${Math.random().toString(36).substr(2, 9)}`;
+                             params.get('token') ||
+                             `venda_${Math.random().toString(36).substr(2, 9)}`;
     
     setEventId(extractedEventId);
 
-    // 3. Inserir Script do Facebook Pixel
+    // 3. Inserir Script do Facebook Pixel (se não existir)
     if (!window.fbq) {
       (function(f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
         if (f.fbq) return; n = f.fbq = function() {
@@ -64,27 +63,29 @@ const App: React.FC = () => {
 
     // 4. Inicializar e Disparar Compra Imediata
     const initData: any = {};
-    if (tid) initData.external_id = tid;
+    if (tid !== "sem_id") initData.external_id = tid;
     
     window.fbq('init', PIXEL_ID, initData);
     window.fbq('track', 'PageView', {}, { eventID: `pv_${extractedEventId}` });
     
-    // PURCHASE COM DEDUPLICAÇÃO (Crucial para Upsell)
+    // PURCHASE COM DEDUPLICAÇÃO
     window.fbq('track', 'Purchase', {
       value: UPSELL_VALUE,
       currency: CURRENCY,
       content_name: PLAN_NAME,
-      external_id: tid
+      external_id: tid !== "sem_id" ? tid : undefined
     }, { 
       eventID: extractedEventId 
     });
+
+    console.log("Pixel Disparado com EventID:", extractedEventId);
   }, []);
 
   const handleLeadEnrichment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !phone) return;
 
-    // Enriquecimento de dados para o Pixel (Advanced Matching)
+    // Enriquecimento de dados (Advanced Matching)
     window.fbq('init', PIXEL_ID, {
       em: email.trim().toLowerCase(),
       ph: phone.replace(/\D/g, ''),
@@ -113,7 +114,7 @@ const App: React.FC = () => {
         </svg>
       </div>
 
-      <h1 className="title-text text-2xl md:text-3xl font-black text-center mb-4 mt-4 uppercase">
+      <h1 className="title-text text-2xl md:text-3xl font-black text-center mb-2 mt-4 uppercase">
         Pagamento Aprovado!
       </h1>
 
@@ -121,12 +122,9 @@ const App: React.FC = () => {
         <p className="text-pink-500 font-bold flex items-center justify-center gap-2 mb-1">
           <Heart size={16} fill="currentColor" /> Sua vaga VIP está garantida.
         </p>
-        <p className="text-pink-400 text-sm font-semibold italic">
-          Conclua o vínculo para liberar o acesso:
-        </p>
       </div>
 
-      {/* Recibo Pontilhado */}
+      {/* Recibo */}
       <div className="dotted-receipt w-full space-y-4">
         <div className="flex justify-between items-center text-sm">
           <div className="flex items-center gap-2 text-blue-400 font-bold uppercase tracking-tighter">
@@ -148,9 +146,9 @@ const App: React.FC = () => {
       <div className="w-full mt-8">
         {!isSubmitted ? (
           <form onSubmit={handleLeadEnrichment} className="space-y-4">
-            <div className="bg-pink-50/50 p-3 rounded-xl border border-pink-100 mb-2">
-               <p className="text-[10px] text-center text-pink-400 font-black tracking-widest uppercase leading-tight">
-                Confirme seus dados para<br/>vincular ao seu Telegram
+            <div className="bg-pink-50/50 p-4 rounded-2xl border-2 border-dashed border-pink-200 mb-2">
+               <p className="text-[11px] text-center text-pink-500 font-bold uppercase leading-tight">
+                Vincule seu Telegram para liberar o acesso VIP agora:
               </p>
             </div>
             <div className="relative">
@@ -179,20 +177,17 @@ const App: React.FC = () => {
               type="submit"
               className="btn-gradient w-full text-white font-black py-5 rounded-2xl transform active:scale-95 transition-all text-sm uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg"
             >
-              LIBERAR NO TELEGRAM <ChevronRight size={20} />
+              LIBERAR ACESSO <ChevronRight size={20} />
             </button>
           </form>
         ) : (
           <div className="animate-pop text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 text-green-500 rounded-full mb-4">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </div>
-            <div className="bg-green-50 border-2 border-green-100 text-green-600 p-4 rounded-2xl mb-6 font-bold text-sm uppercase tracking-tight">
-              ✨ Tudo pronto! Seu acesso foi liberado.
+            <div className="bg-green-50 border-2 border-green-100 text-green-600 p-4 rounded-2xl mb-6 font-bold text-sm uppercase">
+              ✨ ACESSO LIBERADO COM SUCESSO!
             </div>
             <a 
               href={BOT_LINK}
-              className="btn-gradient w-full text-white font-black py-6 rounded-2xl transform hover:-translate-y-1 active:scale-95 transition-all flex flex-col items-center justify-center relative overflow-hidden text-center shadow-xl border-b-4 border-pink-700"
+              className="btn-gradient w-full text-white font-black py-6 rounded-2xl transform hover:-translate-y-1 active:scale-95 transition-all flex flex-col items-center justify-center text-center shadow-xl border-b-4 border-pink-700"
             >
               <div className="text-xl flex items-center gap-2">
                 VOLTAR PARA O BOT 🎀
@@ -202,8 +197,8 @@ const App: React.FC = () => {
         )}
       </div>
 
-      <div className="mt-8 flex items-center gap-1 opacity-20 select-none">
-        <span className="text-[8px] font-bold uppercase tracking-[0.2em]">Transaction Verified: {eventId.substring(0, 12)}...</span>
+      <div className="mt-8 opacity-10 select-none">
+        <span className="text-[8px] font-bold uppercase tracking-[0.2em]">Verified: {eventId.substring(0, 10)}</span>
       </div>
     </div>
   );
